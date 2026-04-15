@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(py --version)",
+      "Bash(python3 -m pip install -r c:/Users/22278/Documents/GitHub/15113-project3-CourseRecommender/requirements.txt -q)",
+      "Bash(python3 -c \"import streamlit, numpy, networkx, sklearn, sentence_transformers, plotly; print\\('All imports OK'\\)\")",
+      "Bash(python3 -c \"import streamlit\")",
+      "Bash(python3 -c \"import numpy\")",
+      "Bash(python3 -c \"import networkx\")",
+      "Bash(python3 -m pip list)",
+      "Bash(cmd /c \"python --version\")",
+      "Bash(cmd /c \"where python\")",
+      "Read(//c/Users/22278/AppData/Local/Programs/Python//**)",
+      "Read(//c/Users/22278/AppData/Local/Microsoft/WindowsApps//**)",
+      "Bash(/c/Users/22278/AppData/Local/Programs/Python/Python313/python.exe --version)",
+      "Bash(/c/Users/22278/AppData/Local/Programs/Python/Python313/python.exe -m pip --version)",
+      "Bash(/c/Users/22278/AppData/Local/Programs/Python/Python313/python.exe -m pip install -r c:/Users/22278/Documents/GitHub/15113-project3-CourseRecommender/requirements.txt)",
+      "Bash(python -m pytest tests/test_prereq.py tests/test_recommender.py -v)"
+    ]
+  }
+}

@@ -1,0 +1,137 @@
+[
+  {
+    "id": "10-301",
+    "name": "Introduction to Machine Learning",
+    "description": "This course provides a broad introduction to machine learning and statistical pattern recognition. Topics include supervised learning, unsupervised learning, learning theory, reinforcement learning, and adaptive control.",
+    "prerequisites": ["21-241", "36-218"],
+    "department": "ML",
+    "units": 12,
+    "source": "official"
+  },
+  {
+    "id": "10-315",
+    "name": "Introduction to Machine Learning (SCS)",
+    "description": "A rigorous introduction to machine learning for SCS students. Covers regression, classification, neural networks, and optimization methods used in modern ML systems.",
+    "prerequisites": ["15-122", "21-241"],
+    "department": "ML",
+    "units": 12,
+    "source": "official"
+  },
+  {
+    "id": "10-601",
+    "name": "Machine Learning",
+    "description": "Machine learning studies the question of how to build computers that improve with experience. It is one of the fastest growing fields in CS with applications in robotics, natural language processing, and computer vision.",
+    "prerequisites": ["10-301"],
+    "department": "ML",
+    "units": 12,
+    "source": "official"
+  },
+  {
+    "id": "10-617",
+    "name": "Intermediate Deep Learning",
+    "description": "Advanced topics in deep learning including transformers, attention mechanisms, generative models, and self-supervised learning. Builds on foundational neural network theory.",
+    "prerequisites": ["10-601"],
+    "department": "ML",
+    "units": 12,
+    "source": "official"
+  },
+  {
+    "id": "15-112",
+    "name": "Fundamentals of Programming and Computer Science",
+    "description": "An introduction to programming and computer science for students with little or no prior experience. Topics include imperative programming, recursion, data structures, and basic algorithms.",
+    "prerequisites": [],
+    "department": "CS",
+    "units": 12,
+    "source": "official"
+  },
+  {
+    "id": "15-122",
+    "name": "Principles of Imperative Computation",
+    "description": "For students with programming experience. Covers techniques for reasoning about the correctness and efficiency of imperative programs, data structures, and algorithms.",
+    "prerequisites": ["15-112"],
+    "department": "CS",
+    "units": 10,
+    "source": "official"
+  },
+  {
+    "id": "15-150",
+    "name": "Principles of Functional Programming",
+    "description": "An introduction to programming based on the mathematical concept of a function. Topics include type systems, higher-order functions, recursion, and formal reasoning about programs.",
+    "prerequisites": ["15-112"],
+    "department": "CS",
+    "units": 10,
+    "source": "official"
+  },
+  {
+    "id": "15-213",
+    "name": "Introduction to Computer Systems",
+    "description": "This course provides a programmer's view of how computer systems execute programs and store information. Topics include machine-level code, memory hierarchy, networking, and concurrency.",
+    "prerequisites": ["15-122", "15-150"],
+    "department": "CS",
+    "units": 12,
+    "source": "official"
+  },
+  {
+    "id": "15-351",
+    "name": "Algorithms and Advanced Data Structures",
+    "description": "A rigorous introduction to the design and analysis of algorithms. Topics include divide and conquer, dynamic programming, graph algorithms, and computational complexity.",
+    "prerequisites": ["15-122", "21-241"],
+    "department": "CS",
+    "units": 12,
+    "source": "official"
+  },
+  {
+    "id": "15-445",
+    "name": "Database Systems",
+    "description": "This course covers the design and implementation of modern database management systems. Topics include SQL, storage management, query processing, transaction management, and distributed databases.",
+    "prerequisites": ["15-213"],
+    "department": "CS",
+    "units": 12,
+    "source": "official"
+  },
+  {
+    "id": "21-241",
+    "name": "Matrices and Linear Transformations",
+    "description": "An introduction to linear algebra covering vectors, matrices, systems of linear equations, eigenvalues, and linear transformations. Essential background for machine learning and data science.",
+    "prerequisites": [],
+    "department": "MATH",
+    "units": 10,
+    "source": "official"
+  },
+  {
+    "id": "21-259",
+    "name": "Calculus in Three Dimensions",
+    "description": "Topics include vectors, lines and planes in space, vector-valued functions, partial derivatives, multiple integrals, and vector calculus.",
+    "prerequisites": [],
+    "department": "MATH",
+    "units": 10,
+    "source": "official"
+  },
+  {
+    "id": "36-218",
+    "name": "Probability Theory for Computer Scientists",
+    "description": "An introduction to probability theory with applications to computer science. Topics include sample spaces, random variables, expectation, variance, common distributions, and limit theorems.",
+    "prerequisites": ["21-259"],
+    "department": "STAT",
+    "units": 9,
+    "source": "official"
+  },
+  {
+    "id": "11-411",
+    "name": "Natural Language Processing",
+    "description": "An overview of linguistic phenomena and the computational techniques used to process natural language text. Topics include language models, parsing, semantics, and modern neural approaches.",
+    "prerequisites": ["10-301", "15-351"],
+    "department": "LTI",
+    "units": 12,
+    "source": "official"
+  },
+  {
+    "id": "16-385",
+    "name": "Computer Vision",
+    "description": "An introduction to computer vision covering image formation, feature detection, object recognition, and deep learning approaches for visual understanding.",
+    "prerequisites": ["10-301", "21-241"],
+    "department": "RI",
+    "units": 12,
+    "source": "official"
+  }
+]

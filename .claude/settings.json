@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(where py:*)",
+      "Bash(py -m pytest \"C:\\\\Users\\\\22278\\\\Documents\\\\GitHub\\\\15113-project3-CourseRecommender\\\\tests\\\\test_prereq.py\" \"C:\\\\Users\\\\22278\\\\Documents\\\\GitHub\\\\15113-project3-CourseRecommender\\\\tests\\\\test_recommender.py\" -v --tb=short)"
+    ]
+  }
+}

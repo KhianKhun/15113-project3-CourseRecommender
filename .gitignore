@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+venv/
+.venv/
+.streamlit/
+.DS_Store
+data/embeddings.npy
+data/raw_courses.json
+*.env
