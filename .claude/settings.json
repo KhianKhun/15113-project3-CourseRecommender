@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(where py:*)",
-      "Bash(py -m pytest \"C:\\\\Users\\\\22278\\\\Documents\\\\GitHub\\\\15113-project3-CourseRecommender\\\\tests\\\\test_prereq.py\" \"C:\\\\Users\\\\22278\\\\Documents\\\\GitHub\\\\15113-project3-CourseRecommender\\\\tests\\\\test_recommender.py\" -v --tb=short)"
+      "Bash(py -m pytest \"C:\\\\Users\\\\22278\\\\Documents\\\\GitHub\\\\15113-project3-CourseRecommender\\\\tests\\\\test_prereq.py\" \"C:\\\\Users\\\\22278\\\\Documents\\\\GitHub\\\\15113-project3-CourseRecommender\\\\tests\\\\test_recommender.py\" -v --tb=short)",
+      "Bash(python -c \"import json; data=json.load\\(open\\('data/courses.json'\\)\\); print\\(f'Total courses: {len\\(data\\)}'\\); print\\('First 3:'\\); [print\\(json.dumps\\(c, indent=2\\)\\) for c in data[:3]]\")",
+      "Bash(python3 -c \"import json; data=json.load\\(open\\('c:/Users/22278/Documents/GitHub/15113-project3-CourseRecommender/data/courses.json'\\)\\); print\\(f'Total: {len\\(data\\)} courses'\\); depts = {}; [depts.update\\({c['department']: depts.get\\(c['department'],0\\)+1}\\) for c in data]; print\\(depts\\)\")"
     ]
   }
 }
