@@ -27,15 +27,11 @@ def format_tooltip(course: dict, pagerank_score: float) -> str:
         A formatted string suitable for use in a Plotly hovertemplate.
     """
     prereqs = ", ".join(course["prerequisites"]) if course.get("prerequisites") else "None"
-    desc = course.get("description", "")
-    if len(desc) > 200:
-        desc = desc[:200] + "..."
     return (
         f"{course['id']} \u2014 {course['name']}<br>"
         f"Department: {course['department']}  |  Units: {course['units']}<br>"
         f"Importance: {pagerank_score:.3f}<br>"
-        f"Prerequisites: {prereqs}<br><br>"
-        f"{desc}"
+        f"Prerequisites: {prereqs}"
     )
 
 
