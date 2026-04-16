@@ -55,6 +55,7 @@ def render_graph_plot(
     top_n_highlight: int,
     selected_ids: list[str],
     explained_variance: float,
+    highlight_ids: list[str] | None = None,
 ) -> go.Figure:
     """
     Builds an interactive Plotly scatter plot for the semantic graph view.
@@ -111,8 +112,12 @@ def render_graph_plot(
         top_k_pairs = scored[:top_k]
         score_map = {cid: s for cid, s in top_k_pairs}
 
-        # Top top_n_highlight by hybrid score (excluding selected) → coral red + label
-        high_relevance_ids = {cid for cid, _ in top_k_pairs[:top_n_highlight]}
+        # Use caller-provided highlight set (rec list) when available;
+        # fall back to top top_n_highlight by hybrid score.
+        if highlight_ids is not None:
+            high_relevance_ids = set(highlight_ids) - selected_set
+        else:
+            high_relevance_ids = {cid for cid, _ in top_k_pairs[:top_n_highlight]}
 
         top_k_ids = [cid for cid, _ in top_k_pairs]
         # Append selected courses (always shown regardless of ranking)

@@ -58,9 +58,8 @@ def render_semantic_view() -> None:
             except ValueError as e:
                 st.error(str(e))
 
+        recs = []
         if st.session_state.get("selected_courses"):
-            st.markdown("---")
-            st.subheader("Recommended for you")
             recs = recommend(
                 input_course_ids=st.session_state.selected_courses,
                 courses=st.session_state.courses,
@@ -68,6 +67,8 @@ def render_semantic_view() -> None:
                 pagerank_scores=st.session_state.pagerank_scores,
                 top_n=top_n_highlight,
             )
+            st.markdown("---")
+            st.subheader("Recommended for you")
             render_recommendation_list(recs)
 
     with right_col:
@@ -88,6 +89,7 @@ def render_semantic_view() -> None:
             top_n_highlight=top_n_highlight,
             selected_ids=selected_ids,
             explained_variance=explained_variance,
+            highlight_ids=[r["id"] for r in recs] if recs else None,
         )
         st.plotly_chart(fig, use_container_width=True)
         if selected_ids:
