@@ -53,6 +53,7 @@ def render_graph_plot(
     top_k: int,
     selected_ids: list[str],
     explained_variance: float,
+    display_ids: list[str] | None = None,
 ) -> go.Figure:
     """
     Builds an interactive Plotly scatter plot for the semantic graph view.
@@ -77,9 +78,20 @@ def render_graph_plot(
     Returns:
         A Plotly Figure object ready for st.plotly_chart().
     """
-    top_k_ids = get_top_n_by_pagerank(pagerank_scores, top_k)
     anchor_ids = set(get_top_n_by_pagerank(pagerank_scores, DEFAULT_ANCHOR_COUNT))
     selected_set = set(selected_ids)
+
+    if display_ids is not None:
+        # Caller pre-computed the display set (e.g. similarity-based when courses selected)
+        top_k_ids = list(display_ids)
+    else:
+        # Fall back to global PageRank top-k, force-including any selected courses
+        top_k_ids = get_top_n_by_pagerank(pagerank_scores, top_k)
+        top_k_set_check = set(top_k_ids)
+        all_course_ids = {c["id"] for c in courses}
+        for sid in selected_ids:
+            if sid not in top_k_set_check and sid in all_course_ids:
+                top_k_ids.append(sid)
 
     id_to_idx = {c["id"]: i for i, c in enumerate(courses)}
     id_to_course = {c["id"]: c for c in courses}

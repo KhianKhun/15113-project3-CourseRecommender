@@ -6,6 +6,10 @@ then routes to the two tab views.
 Launch: streamlit run app/app.py
 """
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 import streamlit as st
 
 from app.core.data_loader import load_courses

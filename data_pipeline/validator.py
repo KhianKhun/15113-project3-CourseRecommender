@@ -80,10 +80,10 @@ def validate(courses: list[dict]) -> list[str]:
                 f"(must be one of {sorted(VALID_SOURCES)})"
             )
 
-        # 5. units must be a positive integer
-        if not isinstance(course["units"], int) or course["units"] <= 0:
+        # 5. units must be a non-negative integer (0 is allowed)
+        if not isinstance(course["units"], int) or course["units"] < 0:
             errors.append(
-                f"{prefix} id={cid!r}: 'units' must be a positive integer, "
+                f"{prefix} id={cid!r}: 'units' must be a non-negative integer, "
                 f"got {course['units']!r}"
             )
 
