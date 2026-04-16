@@ -83,7 +83,6 @@ def render_semantic_view() -> None:
             coords=coords,
             courses=st.session_state.courses,
             pagerank_scores=st.session_state.pagerank_scores,
-            similarity_matrix=st.session_state.similarity_matrix,
             n_components=n_components,
             top_k=top_k,
             top_n_highlight=top_n_highlight,

@@ -8,7 +8,6 @@ import numpy as np
 import networkx as nx
 import plotly.graph_objects as go
 
-from app.core.config import SIMILARITY_WEIGHT, PAGERANK_WEIGHT
 from app.core.graph.pagerank import get_top_n_by_pagerank
 from app.ui.components.tooltip import format_tooltip
 
@@ -45,11 +44,15 @@ _MAX_SIZE = 24
 _SELECTED_SIZE_BONUS = 6
 
 
+def _course_num(cid: str) -> int:
+    """Convert 'xx-yyy' → integer xxyyy for tie-breaking (smaller = higher priority)."""
+    return int(cid.replace("-", ""))
+
+
 def render_graph_plot(
     coords: np.ndarray,
     courses: list[dict],
     pagerank_scores: dict[str, float],
-    similarity_matrix: np.ndarray,
     n_components: int,
     top_k: int,
     top_n_highlight: int,
@@ -93,45 +96,47 @@ def render_graph_plot(
     id_to_idx = {c["id"]: i for i, c in enumerate(courses)}
 
     if selected_ids:
-        # Mode B: hybrid score — α × mean_sim + (1-α) × pagerank
+        # Mode B: geometry-based — find the K nearest courses to the geometric
+        # center of the selected courses in PCA space.
         input_indices = [id_to_idx[cid] for cid in selected_ids if cid in id_to_idx]
-        scored: list[tuple[str, float]] = []
-        for course in courses:
-            cid = course["id"]
-            if cid in selected_set:
-                continue  # added back unconditionally below
-            cidx = id_to_idx.get(cid)
-            if cidx is None:
-                continue
-            mean_sim = float(similarity_matrix[input_indices, cidx].mean()) if input_indices else 0.0
-            pr = pagerank_scores.get(cid, 0.0)
-            score = SIMILARITY_WEIGHT * mean_sim + PAGERANK_WEIGHT * pr
-            scored.append((cid, score))
 
-        scored.sort(key=lambda x: x[1], reverse=True)
-        top_k_pairs = scored[:top_k]
-        score_map = {cid: s for cid, s in top_k_pairs}
+        if input_indices:
+            center = coords[np.array(input_indices)].mean(axis=0)  # (n_components,)
 
-        # Use caller-provided highlight set (rec list) when available;
-        # fall back to top top_n_highlight by hybrid score.
-        if highlight_ids is not None:
-            high_relevance_ids = set(highlight_ids) - selected_set
+            # Compute distance from center for every non-selected course.
+            candidates: list[tuple[str, float, int]] = []
+            for course in courses:
+                cid = course["id"]
+                if cid in selected_set:
+                    continue
+                cidx = id_to_idx.get(cid)
+                if cidx is None:
+                    continue
+                dist = float(np.linalg.norm(coords[cidx] - center))
+                candidates.append((cid, dist, _course_num(cid)))
+
+            # Sort by distance ascending; tie-break by course number ascending.
+            candidates.sort(key=lambda x: (x[1], x[2]))
+            top_k_ids = [cid for cid, _, _ in candidates[:top_k]]
         else:
-            high_relevance_ids = {cid for cid, _ in top_k_pairs[:top_n_highlight]}
+            top_k_ids = get_top_n_by_pagerank(pagerank_scores, top_k)
 
-        top_k_ids = [cid for cid, _ in top_k_pairs]
-        # Append selected courses (always shown regardless of ranking)
-        all_course_ids = {c["id"] for c in courses}
+        # Always include selected courses.
         top_k_set = set(top_k_ids)
+        all_course_ids = {c["id"] for c in courses}
         for sid in selected_ids:
             if sid not in top_k_set and sid in all_course_ids:
                 top_k_ids.append(sid)
+
+        # High relevance: use externally provided rec list when available.
+        if highlight_ids is not None:
+            high_relevance_ids = set(highlight_ids) - selected_set
+        else:
+            high_relevance_ids = set(top_k_ids[:top_n_highlight]) - selected_set
     else:
         # Mode A: pure PageRank ordering
         top_k_ids = get_top_n_by_pagerank(pagerank_scores, top_k)
-        # Top top_n_highlight by PageRank → coral red + label
         high_relevance_ids = set(get_top_n_by_pagerank(pagerank_scores, top_n_highlight))
-        score_map: dict[str, float] = {}
 
     # Build per-node arrays
     xs, ys, zs = [], [], []
@@ -179,9 +184,7 @@ def render_graph_plot(
         else:
             labels.append("")
 
-        # Hover tooltip (use blended score if available, else PageRank)
-        display_score = score_map.get(cid, pr)
-        tooltips.append(format_tooltip(course, display_score))
+        tooltips.append(format_tooltip(course, pr))
 
     fig = go.Figure()
 
