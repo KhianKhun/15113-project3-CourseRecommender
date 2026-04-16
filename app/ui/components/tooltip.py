@@ -71,7 +71,8 @@ def render_course_card(course: dict, score: float | None = None) -> None:
 
 def render_recommendation_list(recommendations: list[dict]) -> None:
     """
-    Renders a compact list of course recommendations.
+    Renders a compact list of course recommendations inside a scrollable
+    container so that a large top_n_highlight value does not overflow the panel.
 
     Args:
         recommendations: A list of course dicts each augmented with a 'score'
@@ -84,6 +85,7 @@ def render_recommendation_list(recommendations: list[dict]) -> None:
         st.info("No recommendations found. Try selecting more courses.")
         return
 
-    for course in recommendations:
-        score = course.get("score", 0.0)
-        st.markdown(f"**{course['id']}** — {course['name']} `score: {score:.3f}`")
+    with st.container(height=300):
+        for course in recommendations:
+            score = course.get("score", 0.0)
+            st.markdown(f"**{course['id']}** — {course['name']} `score: {score:.3f}`")

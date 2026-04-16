@@ -7,7 +7,7 @@ Functions must not write to st.session_state — they return values to the calle
 
 import streamlit as st
 
-from app.core.config import DEFAULT_TOP_K_NODES
+from app.core.config import DEFAULT_TOP_K_NODES, DEFAULT_ANCHOR_COUNT
 
 
 def dimension_selector() -> int:
@@ -35,6 +35,22 @@ def node_count_slider() -> int:
         max_value=100,
         value=DEFAULT_TOP_K_NODES,
         step=5,
+    )
+
+
+def highlight_count_slider() -> int:
+    """
+    Renders the highlight count slider.
+    Returns current int value (1 to 20).
+    Default is DEFAULT_ANCHOR_COUNT from config.py.
+    """
+    return st.slider(
+        "Highlighted courses to show",
+        min_value=1,
+        max_value=20,
+        value=DEFAULT_ANCHOR_COUNT,
+        step=1,
+        key="top_n_highlight",
     )
 
 

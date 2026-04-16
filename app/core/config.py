@@ -17,3 +17,7 @@ DEFAULT_ANCHOR_COUNT = 10
 
 # PCA configuration
 DEFAULT_N_COMPONENTS = 2
+
+# Scoring weights for node ranking
+SIMILARITY_WEIGHT = 0.7       # α in the scoring formula
+PAGERANK_WEIGHT = 0.3         # (1 - α)
