@@ -10,6 +10,7 @@ import plotly.graph_objects as go
 
 from app.core.graph.pagerank import get_top_n_by_pagerank
 from app.ui.components.tooltip import format_tooltip
+from app.core.config import SIMILARITY_WEIGHT, PAGERANK_WEIGHT
 
 # Department → color mapping. Unknown departments fall back to DEPT_DEFAULT.
 DEPT_COLORS: dict[str, str] = {
@@ -40,8 +41,8 @@ DEPT_DEFAULT = "#AAAAAA"
 _SELECTED_COLOR = "#FFD700"   # bright yellow
 _ANCHOR_COLOR = "#FF7F50"     # coral/orange
 _MIN_SIZE = 8
-_MAX_SIZE = 24
-_SELECTED_SIZE_BONUS = 6
+_MAX_SIZE = 16
+_SELECTED_SIZE_BONUS = 0
 
 
 def _course_num(cid: str) -> int:
@@ -96,6 +97,7 @@ def render_graph_plot(
     """
     selected_set = set(selected_ids)
     id_to_idx = {c["id"]: i for i, c in enumerate(courses)}
+    center = None  # set in Mode B when input_indices exist
 
     if selected_ids:
         # Mode B:
@@ -140,14 +142,16 @@ def render_graph_plot(
             # All courses within the circle.
             in_circle = [cid for cid, d in dists.items() if d <= radius]
 
-            # Avg cosine similarity from candidate to all selected courses.
-            def avg_sim(cid: str) -> float:
+            # Blended score: SIMILARITY_WEIGHT * mean_sim + PAGERANK_WEIGHT * pagerank.
+            def blended_score(cid: str) -> float:
                 if similarity_matrix is None:
                     return -dists.get(cid, float("inf"))  # fallback: closer = better
                 cidx = id_to_idx.get(cid)
                 if cidx is None:
                     return 0.0
-                return float(np.mean(similarity_matrix[cidx, input_indices]))
+                mean_sim = float(np.mean(similarity_matrix[cidx, input_indices]))
+                pr = pagerank_scores.get(cid, 0.0)
+                return SIMILARITY_WEIGHT * mean_sim + PAGERANK_WEIGHT * pr
 
             # Build display_set.
             display_set: list[str] = []
@@ -166,9 +170,9 @@ def render_graph_plot(
                     display_set.append(hid)
                     seen.add(hid)
 
-            # 3. Fill from in-circle courses by similarity until top_k.
+            # 3. Fill from in-circle courses by blended score until top_k.
             fill_candidates = sorted(
-                [(cid, avg_sim(cid)) for cid in in_circle if cid not in seen],
+                [(cid, blended_score(cid)) for cid in in_circle if cid not in seen],
                 key=lambda x: x[1],
                 reverse=True,
             )
@@ -180,6 +184,8 @@ def render_graph_plot(
 
             top_k_ids = display_set
             high_relevance_ids = set(forced_highlights) - selected_set
+            # Blended scores for sizing (changes with user selection).
+            node_scores = {cid: blended_score(cid) for cid in top_k_ids}
 
         else:
             top_k_ids = get_top_n_by_pagerank(pagerank_scores, top_k)
@@ -187,19 +193,23 @@ def render_graph_plot(
                 set(highlight_ids) - selected_set if highlight_ids
                 else set(get_top_n_by_pagerank(pagerank_scores, top_n_highlight))
             )
+            node_scores = {cid: pagerank_scores.get(cid, 0.0) for cid in top_k_ids}
     else:
         # Mode A: pure PageRank ordering
         top_k_ids = get_top_n_by_pagerank(pagerank_scores, top_k)
         high_relevance_ids = set(get_top_n_by_pagerank(pagerank_scores, top_n_highlight))
+        node_scores = {cid: pagerank_scores.get(cid, 0.0) for cid in top_k_ids}
+
+    # Normalize node_scores to [0, 1] for sizing.
+    score_vals = list(node_scores.values())
+    s_max = max(score_vals) if score_vals else 1.0
+    s_min = min(score_vals) if score_vals else 0.0
+    s_range = max(s_max - s_min, 1e-9)
 
     # Build per-node arrays
     xs, ys, zs = [], [], []
     sizes, colors, labels, tooltips = [], [], [], []
     id_to_course = {c["id"]: c for c in courses}
-
-    pr_max = max(pagerank_scores.values()) if pagerank_scores else 1.0
-    pr_min = min(pagerank_scores.values()) if pagerank_scores else 0.0
-    pr_range = max(pr_max - pr_min, 1e-9)
 
     for cid in top_k_ids:
         if cid not in id_to_idx:
@@ -214,8 +224,8 @@ def render_graph_plot(
         if n_components == 3:
             zs.append(float(coords[idx, 2]))
 
-        # Size: scale PageRank to [_MIN_SIZE, _MAX_SIZE]; bonuses for special states
-        norm = (pr - pr_min) / pr_range
+        # Size: scale node_scores to [_MIN_SIZE, _MAX_SIZE]; bonuses for special states.
+        norm = (node_scores.get(cid, s_min) - s_min) / s_range
         base_size = _MIN_SIZE + norm * (_MAX_SIZE - _MIN_SIZE)
         if cid in selected_set:
             base_size += _SELECTED_SIZE_BONUS      # +6 for selected
@@ -265,6 +275,21 @@ def render_graph_plot(
             hoverinfo="text",
             showlegend=False,
         ))
+        if center is not None:
+            fig.add_trace(go.Scatter(
+                x=[float(center[0])],
+                y=[float(center[1])],
+                mode="markers",
+                marker=dict(
+                    symbol="circle",
+                    size=14,
+                    color="rgba(255, 0, 0, 0.5)",
+                    line=dict(width=3, color="rgba(255, 0, 0, 1.0)"),
+                ),
+                hovertext=["Geometric Center"],
+                hoverinfo="text",
+                showlegend=False,
+            ))
         fig.update_layout(
             showlegend=False,
             paper_bgcolor="rgba(0,0,0,0)",
@@ -292,6 +317,22 @@ def render_graph_plot(
             hoverinfo="text",
             showlegend=False,
         ))
+        if center is not None:
+            fig.add_trace(go.Scatter3d(
+                x=[float(center[0])],
+                y=[float(center[1])],
+                z=[float(center[2])],
+                mode="markers",
+                marker=dict(
+                    symbol="circle",
+                    size=8,
+                    color="rgba(255, 0, 0, 0.5)",
+                    line=dict(width=3, color="rgba(255, 0, 0, 1.0)"),
+                ),
+                hovertext=["Geometric Center"],
+                hoverinfo="text",
+                showlegend=False,
+            ))
         fig.update_layout(
             showlegend=False,
             paper_bgcolor="rgba(0,0,0,0)",

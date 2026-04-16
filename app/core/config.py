@@ -19,5 +19,5 @@ DEFAULT_ANCHOR_COUNT = 10
 DEFAULT_N_COMPONENTS = 2
 
 # Scoring weights for node ranking
-SIMILARITY_WEIGHT = 0.7       # α in the scoring formula
-PAGERANK_WEIGHT = 0.3         # (1 - α)
+SIMILARITY_WEIGHT = 0.85       # α in the scoring formula
+PAGERANK_WEIGHT = 0.15         # (1 - α)

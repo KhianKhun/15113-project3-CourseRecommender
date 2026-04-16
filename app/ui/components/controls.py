@@ -32,7 +32,7 @@ def node_count_slider() -> int:
     return st.slider(
         "Max nodes to display",
         min_value=10,
-        max_value=400,
+        max_value=150,
         value=DEFAULT_TOP_K_NODES,
         step=5,
     )
