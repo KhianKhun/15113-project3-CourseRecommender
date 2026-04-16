@@ -6,13 +6,19 @@ then routes to the two tab views.
 Launch: streamlit run app/app.py
 """
 
+import os
+os.environ["TRANSFORMERS_VERBOSITY"] = "error"
+
 import sys
+import logging
 import warnings
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 warnings.filterwarnings("ignore", message=".*__path__.*")
 warnings.filterwarnings("ignore", category=UserWarning, module="transformers")
+
+logging.getLogger("transformers").setLevel(logging.ERROR)
 
 import streamlit as st
 

@@ -89,6 +89,7 @@ def render_semantic_view() -> None:
             selected_ids=selected_ids,
             explained_variance=explained_variance,
             highlight_ids=[r["id"] for r in recs] if recs else None,
+            similarity_matrix=st.session_state.similarity_matrix,
         )
         st.plotly_chart(fig, use_container_width=True)
         if selected_ids:

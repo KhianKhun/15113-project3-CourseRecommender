@@ -59,35 +59,37 @@ def render_graph_plot(
     selected_ids: list[str],
     explained_variance: float,
     highlight_ids: list[str] | None = None,
+    similarity_matrix: np.ndarray | None = None,
 ) -> go.Figure:
     """
     Builds an interactive Plotly scatter plot for the semantic graph view.
 
     Node selection:
-      - No selection: top K courses by PageRank.
-      - With selection: top K courses by blended score
-        (SIMILARITY_WEIGHT × mean_sim + PAGERANK_WEIGHT × pagerank), then
-        selected courses are appended unconditionally.
+      - No selection: top K by PageRank (Mode A).
+      - With selection (Mode B):
+          1. Center = geometric center of selected courses in PCA space.
+          2. Radius = distance from center to the farthest of the
+             top_n_highlight highlighted/recommended courses.
+          3. Display: selected (always) + top_n_highlight highlights (always)
+             + fill remaining slots from courses inside the circle,
+             ranked by avg cosine similarity to selected courses, until top_k.
 
     Node coloring priority (highest first):
-      1. Selected (yellow #FFD700) — course id in selected_ids.
-      2. High relevance (#FF6B6B) — top 20% of the K scored nodes by score;
-         only when selected_ids is not empty.
-      3. Default — department color, sized by PageRank.
-
-    Node labels:
-      - Selected courses: always visible.
-      - Others: visible only if in top DEFAULT_ANCHOR_COUNT by PageRank.
+      1. Selected (yellow #FFD700).
+      2. High relevance (#FF6B6B) — top_n_highlight recommended courses.
+      3. Department color (default).
 
     Args:
-        coords: (N, n_components) coordinate array from reduce_dimensions().
-        courses: The full course list (row order matches coords).
+        coords: (N, n_components) PCA coordinate array.
+        courses: Full course list (row order matches coords).
         pagerank_scores: Dict mapping course_id -> normalized score in [0, 1].
-        similarity_matrix: (N, N) cosine similarity matrix.
-        n_components: 2 for 2D, 3 for 3D.
-        top_k: Number of top scored nodes to display (plus selected courses).
+        n_components: 2 or 3.
+        top_k: Max number of nodes to display.
+        top_n_highlight: Number of recommended courses that define the radius.
         selected_ids: Course ids highlighted yellow.
-        explained_variance: Variance ratio sum from PCA (for display, not used here).
+        explained_variance: PCA variance ratio sum (used in caption only).
+        highlight_ids: Recommended course ids (define the circle radius).
+        similarity_matrix: (N, N) cosine similarity matrix for fill ordering.
 
     Returns:
         A Plotly Figure object ready for st.plotly_chart().
@@ -96,43 +98,95 @@ def render_graph_plot(
     id_to_idx = {c["id"]: i for i, c in enumerate(courses)}
 
     if selected_ids:
-        # Mode B: geometry-based — find the K nearest courses to the geometric
-        # center of the selected courses in PCA space.
+        # Mode B:
+        # 1. Center = geometric center of selected courses.
+        # 2. Radius = farthest of the top_n_highlight highlighted courses from center.
+        # 3. Collect all courses inside the circle.
+        # 4. Fill display up to top_k by avg similarity to selected courses.
         input_indices = [id_to_idx[cid] for cid in selected_ids if cid in id_to_idx]
 
         if input_indices:
             center = coords[np.array(input_indices)].mean(axis=0)  # (n_components,)
 
-            # Compute distance from center for every non-selected course.
-            candidates: list[tuple[str, float, int]] = []
+            # Distance from center for every course.
+            dists: dict[str, float] = {}
             for course in courses:
                 cid = course["id"]
-                if cid in selected_set:
-                    continue
+                if cid in id_to_idx:
+                    dists[cid] = float(np.linalg.norm(coords[id_to_idx[cid]] - center))
+
+            # Highlighted courses (up to top_n_highlight) sorted by distance.
+            forced_highlights: list[str] = []
+            if highlight_ids:
+                hl_sorted = sorted(
+                    (hid for hid in highlight_ids if hid in dists),
+                    key=lambda hid: dists[hid],
+                )
+                forced_highlights = hl_sorted[:top_n_highlight]
+
+            # Radius = distance to farthest forced highlight from center.
+            # Fallback (no highlights): radius covers top_k nearest courses.
+            if forced_highlights:
+                radius = max(dists[hid] for hid in forced_highlights)
+            else:
+                sorted_dists = sorted(dists.values())
+                radius = sorted_dists[min(top_k - 1, len(sorted_dists) - 1)]
+
+            # Selected courses are always inside the circle.
+            for sid in selected_ids:
+                if sid in dists:
+                    radius = max(radius, dists[sid])
+
+            # All courses within the circle.
+            in_circle = [cid for cid, d in dists.items() if d <= radius]
+
+            # Avg cosine similarity from candidate to all selected courses.
+            def avg_sim(cid: str) -> float:
+                if similarity_matrix is None:
+                    return -dists.get(cid, float("inf"))  # fallback: closer = better
                 cidx = id_to_idx.get(cid)
                 if cidx is None:
-                    continue
-                dist = float(np.linalg.norm(coords[cidx] - center))
-                candidates.append((cid, dist, _course_num(cid)))
+                    return 0.0
+                return float(np.mean(similarity_matrix[cidx, input_indices]))
 
-            # Sort by distance ascending; tie-break by course number ascending.
-            candidates.sort(key=lambda x: (x[1], x[2]))
-            top_k_ids = [cid for cid, _, _ in candidates[:top_k]]
+            # Build display_set.
+            display_set: list[str] = []
+            seen: set[str] = set()
+            all_course_ids = {c["id"] for c in courses}
+
+            # 1. Selected courses (always, yellow).
+            for sid in selected_ids:
+                if sid in all_course_ids and sid not in seen:
+                    display_set.append(sid)
+                    seen.add(sid)
+
+            # 2. Forced highlights (always, coral red).
+            for hid in forced_highlights:
+                if hid not in seen:
+                    display_set.append(hid)
+                    seen.add(hid)
+
+            # 3. Fill from in-circle courses by similarity until top_k.
+            fill_candidates = sorted(
+                [(cid, avg_sim(cid)) for cid in in_circle if cid not in seen],
+                key=lambda x: x[1],
+                reverse=True,
+            )
+            for cid, _ in fill_candidates:
+                if len(display_set) >= top_k:
+                    break
+                display_set.append(cid)
+                seen.add(cid)
+
+            top_k_ids = display_set
+            high_relevance_ids = set(forced_highlights) - selected_set
+
         else:
             top_k_ids = get_top_n_by_pagerank(pagerank_scores, top_k)
-
-        # Always include selected courses.
-        top_k_set = set(top_k_ids)
-        all_course_ids = {c["id"] for c in courses}
-        for sid in selected_ids:
-            if sid not in top_k_set and sid in all_course_ids:
-                top_k_ids.append(sid)
-
-        # High relevance: use externally provided rec list when available.
-        if highlight_ids is not None:
-            high_relevance_ids = set(highlight_ids) - selected_set
-        else:
-            high_relevance_ids = set(top_k_ids[:top_n_highlight]) - selected_set
+            high_relevance_ids = (
+                set(highlight_ids) - selected_set if highlight_ids
+                else set(get_top_n_by_pagerank(pagerank_scores, top_n_highlight))
+            )
     else:
         # Mode A: pure PageRank ordering
         top_k_ids = get_top_n_by_pagerank(pagerank_scores, top_k)
