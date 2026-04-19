@@ -14,6 +14,7 @@ from app.core.config import (
     COSINE_WEIGHT, STRUCTURAL_WEIGHT, PAGERANK_WEIGHT,
     DECAY_ALPHA, DECAY_K,
     UPSTREAM_WEIGHT, DOWNSTREAM_WEIGHT,
+    STRUCTURAL_MATRIX_PATH,
 )
 
 logger = logging.getLogger(__name__)
@@ -86,10 +87,57 @@ def _structural_sim_pair(
     return _weighted_jaccard(n_a, n_b)
 
 
+def compute_structural_matrix(courses: list[dict]) -> np.ndarray:
+    """
+    Precomputes the N×N weighted-Jaccard structural similarity matrix for all courses.
+
+    Loads from STRUCTURAL_MATRIX_PATH if cached and row count matches.
+    Otherwise runs BFS for every course, computes all pairwise Jaccard scores,
+    saves the result, and returns it.
+
+    Args:
+        courses: The full merged course list from data_loader.load_courses().
+
+    Returns:
+        A symmetric (N, N) float32 matrix where entry [i, j] is the weighted-Jaccard
+        structural similarity between courses[i] and courses[j].
+    """
+    n = len(courses)
+
+    if STRUCTURAL_MATRIX_PATH.exists():
+        cached = np.load(STRUCTURAL_MATRIX_PATH)
+        if cached.shape == (n, n):
+            return cached
+
+    courses_by_id = {c["id"]: c for c in courses}
+    reverse_index: dict[str, list[str]] = {}
+    for c in courses:
+        for p in c["prerequisites"]:
+            reverse_index.setdefault(p, []).append(c["id"])
+
+    neighborhoods = [
+        _weighted_neighborhood(c["id"], courses_by_id, reverse_index)
+        for c in courses
+    ]
+
+    matrix = np.zeros((n, n), dtype=np.float32)
+    for i in range(n):
+        for j in range(i + 1, n):
+            sim = _weighted_jaccard(neighborhoods[i], neighborhoods[j])
+            matrix[i, j] = sim
+            matrix[j, i] = sim
+
+    STRUCTURAL_MATRIX_PATH.parent.mkdir(parents=True, exist_ok=True)
+    np.save(STRUCTURAL_MATRIX_PATH, matrix)
+
+    return matrix
+
+
 def recommend(
     input_course_ids: list[str],
     courses: list[dict],
     similarity_matrix: np.ndarray,
+    structural_matrix: np.ndarray,
     pagerank_scores: dict[str, float],
     top_n: int = 5,
 ) -> list[dict]:
@@ -98,13 +146,13 @@ def recommend(
     list of recommended courses.
 
     Scoring formula:
-        score = COSINE_WEIGHT     * cosine_sim
-              + STRUCTURAL_WEIGHT * structural_sim
-              + PAGERANK_WEIGHT   * pagerank_score
+        score = COSINE_WEIGHT     * norm(cosine_sim)
+              + STRUCTURAL_WEIGHT * norm(structural_sim)
+              + PAGERANK_WEIGHT   * norm(pagerank_score)
 
-    cosine_sim is the mean cosine similarity between the candidate and all inputs.
-    structural_sim is the mean weighted-Jaccard prereq-neighborhood similarity.
-    pagerank_score is the normalized PageRank score.
+    Each signal is min-max normalized within the candidate set before blending,
+    so relative differences are preserved even when raw values cluster in a narrow range
+    (e.g. specter2 cosine similarities concentrated around 0.88-0.93).
 
     Args:
         input_course_ids: Course ids the user is already interested in.
@@ -122,12 +170,6 @@ def recommend(
 
     id_to_idx = {c["id"]: i for i, c in enumerate(courses)}
     id_to_course = {c["id"]: c for c in courses}
-
-    courses_by_id = {c["id"]: c for c in courses}
-    reverse_index: dict[str, list[str]] = {}
-    for c in courses:
-        for p in c["prerequisites"]:
-            reverse_index.setdefault(p, []).append(c["id"])
 
     input_set = set(input_course_ids)
     input_indices: list[int] = []
@@ -149,26 +191,23 @@ def recommend(
             if neighbor_id not in input_set:
                 candidate_ids.add(neighbor_id)
 
-    neighborhood_cache: dict[str, dict[str, float]] = {}
+    def _minmax(values: list[float]) -> list[float]:
+        lo, hi = min(values), max(values)
+        if hi == lo:
+            return [0.0] * len(values)
+        return [(v - lo) / (hi - lo) for v in values]
 
-    def get_neighborhood(cid: str) -> dict[str, float]:
-        if cid not in neighborhood_cache:
-            neighborhood_cache[cid] = _weighted_neighborhood(cid, courses_by_id, reverse_index)
-        return neighborhood_cache[cid]
+    # Compute raw signals for all candidates
+    candidates = list(candidate_ids)
+    raw_cosine: list[float] = []
+    raw_structural: list[float] = []
+    raw_pagerank: list[float] = []
 
-    def blended_score(cid: str) -> float:
+    for cid in candidates:
         cidx = id_to_idx.get(cid)
-        if cidx is None:
-            return 0.0
 
-        cosine_sim = float(np.mean(similarity_matrix[cidx, input_indices]))
-
-        n_cid = get_neighborhood(cid)
-        struct_sims = [
-            _weighted_jaccard(n_cid, get_neighborhood(input_id))
-            for input_id in valid_input_ids
-        ]
-        structural_sim = float(np.mean(struct_sims))
+        cosine_sim = float(np.mean(similarity_matrix[cidx, input_indices])) if cidx is not None else 0.0
+        structural_sim = float(np.mean(structural_matrix[cidx, input_indices])) if cidx is not None else 0.0
 
         pr = pagerank_scores.get(cid)
         if pr is None:
@@ -177,14 +216,30 @@ def recommend(
             )
             pr = 0.0
 
-        return COSINE_WEIGHT * cosine_sim + STRUCTURAL_WEIGHT * structural_sim + PAGERANK_WEIGHT * pr
+        raw_cosine.append(cosine_sim)
+        raw_structural.append(structural_sim)
+        raw_pagerank.append(pr)
 
-    ranked = sorted(candidate_ids, key=blended_score, reverse=True)
+    # Normalize each signal within the candidate set before blending
+    norm_cosine     = _minmax(raw_cosine)
+    norm_structural = _minmax(raw_structural)
+    norm_pagerank   = _minmax(raw_pagerank)
+
+    scored = [
+        (
+            cid,
+            COSINE_WEIGHT     * norm_cosine[i]
+            + STRUCTURAL_WEIGHT * norm_structural[i]
+            + PAGERANK_WEIGHT   * norm_pagerank[i],
+        )
+        for i, cid in enumerate(candidates)
+    ]
+    scored.sort(key=lambda x: x[1], reverse=True)
 
     results = []
-    for cid in ranked[:top_n]:
+    for cid, score in scored[:top_n]:
         course = dict(id_to_course[cid])
-        course["score"] = blended_score(cid)
+        course["score"] = score
         results.append(course)
 
     return results

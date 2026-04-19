@@ -5,7 +5,8 @@ DATA_DIR = ROOT_DIR / "data"
 
 COURSES_PATH = DATA_DIR / "courses.json"
 USER_COURSES_PATH = DATA_DIR / "user_courses.json"
-EMBEDDINGS_PATH = DATA_DIR / "embeddings.npy"
+EMBEDDINGS_PATH          = DATA_DIR / "embeddings.npy"
+STRUCTURAL_MATRIX_PATH   = DATA_DIR / "structural_matrix.npy"
 
 # Model configuration
 EMBEDDING_MODEL_NAME   = "allenai/specter2_base"

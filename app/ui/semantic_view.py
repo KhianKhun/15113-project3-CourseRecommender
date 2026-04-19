@@ -64,6 +64,7 @@ def render_semantic_view() -> None:
                 input_course_ids=st.session_state.selected_courses,
                 courses=st.session_state.courses,
                 similarity_matrix=st.session_state.similarity_matrix,
+                structural_matrix=st.session_state.structural_matrix,
                 pagerank_scores=st.session_state.pagerank_scores,
                 top_n=top_n_highlight,
             )

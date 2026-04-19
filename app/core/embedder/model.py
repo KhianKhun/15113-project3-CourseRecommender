@@ -4,27 +4,24 @@ Loads or computes sentence embeddings for all courses using SPECTER2.
 """
 
 import numpy as np
+import streamlit as st
 import torch
 from adapters import AutoAdapterModel
 from transformers import AutoTokenizer
 
 from app.core.config import EMBEDDING_ADAPTER_NAME, EMBEDDING_MODEL_NAME, EMBEDDINGS_PATH
 
-_model: AutoAdapterModel | None = None
-_tokenizer: AutoTokenizer | None = None
-
 _BATCH_SIZE = 16
 _MAX_LENGTH = 512
 
 
+@st.cache_resource
 def _get_model() -> tuple[AutoAdapterModel, AutoTokenizer]:
-    global _model, _tokenizer
-    if _model is None:
-        _tokenizer = AutoTokenizer.from_pretrained(EMBEDDING_MODEL_NAME)
-        _model = AutoAdapterModel.from_pretrained(EMBEDDING_MODEL_NAME)
-        _model.load_adapter(EMBEDDING_ADAPTER_NAME, source="hf", set_active=True)
-        _model.eval()
-    return _model, _tokenizer
+    tokenizer = AutoTokenizer.from_pretrained(EMBEDDING_MODEL_NAME)
+    model = AutoAdapterModel.from_pretrained(EMBEDDING_MODEL_NAME)
+    model.load_adapter(EMBEDDING_ADAPTER_NAME, source="hf", set_active=True)
+    model.eval()
+    return model, tokenizer
 
 
 def get_embeddings(courses: list[dict]) -> np.ndarray:
