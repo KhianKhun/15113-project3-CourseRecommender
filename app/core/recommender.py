@@ -11,6 +11,7 @@ import numpy as np
 
 from app.core.config import (
     COSINE_WEIGHT, STRUCTURAL_WEIGHT, PAGERANK_WEIGHT,
+    STRUCTURAL_COSINE_THRESHOLD, STRUCTURAL_PAGERANK_THRESHOLD,
     DECAY_ALPHA, DECAY_K,
     UPSTREAM_WEIGHT, DOWNSTREAM_WEIGHT,
 )
@@ -128,6 +129,11 @@ def recommend(
     )                                                   # (N, N_inputs)
     cosine_scores = cosine_mat.mean(axis=1)             # (N,)
 
+    # --- PageRank signal ---
+    pagerank_arr = np.array(
+        [pagerank_scores.get(c["id"], 0.0) for c in courses], dtype=np.float32
+    )
+
     # --- Structural signal (BFS on-demand) ---
     courses_by_id = {c["id"]: c for c in courses}
     reverse_index: dict[str, list[str]] = {}
@@ -144,15 +150,15 @@ def recommend(
     for i, c in enumerate(courses):
         if c["id"] in input_set:
             continue
+        if (
+            cosine_scores[i] <= STRUCTURAL_COSINE_THRESHOLD
+            or pagerank_arr[i] <= STRUCTURAL_PAGERANK_THRESHOLD
+        ):
+            continue
         nbr = _weighted_neighborhood(c["id"], courses_by_id, reverse_index)
         if nbr:
             vals = [_weighted_jaccard(nbr, inp_nbr) for inp_nbr in input_neighborhoods]
             structural_scores[i] = float(np.mean(vals))
-
-    # --- PageRank signal ---
-    pagerank_arr = np.array(
-        [pagerank_scores.get(c["id"], 0.0) for c in courses], dtype=np.float32
-    )
 
     # --- Final score: weighted sum (no min-max normalization) ---
     final_scores = (

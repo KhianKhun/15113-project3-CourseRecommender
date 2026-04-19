@@ -29,6 +29,11 @@ COSINE_WEIGHT     = 0.70
 STRUCTURAL_WEIGHT = 0.20
 PAGERANK_WEIGHT   = 0.10
 
+# Structural similarity filter thresholds (AND condition)
+# Courses must meet BOTH to have structural similarity computed; others get 0.
+STRUCTURAL_COSINE_THRESHOLD   = 0.2
+STRUCTURAL_PAGERANK_THRESHOLD = 0.1
+
 # Prerequisite depth decay parameters
 DECAY_ALPHA = 0.25  # floor weight for distant nodes
 DECAY_K     = 0.20  # slope of linear decay per hop
