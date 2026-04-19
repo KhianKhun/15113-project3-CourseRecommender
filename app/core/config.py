@@ -8,7 +8,8 @@ USER_COURSES_PATH = DATA_DIR / "user_courses.json"
 EMBEDDINGS_PATH = DATA_DIR / "embeddings.npy"
 
 # Model configuration
-EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
+EMBEDDING_MODEL_NAME   = "allenai/specter2_base"
+EMBEDDING_ADAPTER_NAME = "allenai/specter2"
 
 # Graph configuration
 DEFAULT_SIMILARITY_THRESHOLD = 0.3
