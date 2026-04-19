@@ -11,11 +11,9 @@ from app.ui.components.controls import (
     node_count_slider,
     highlight_count_slider,
     course_search,
-    add_course_form,
 )
 from app.ui.components.graph_plot import render_graph_plot
 from app.ui.components.tooltip import render_recommendation_list
-from app.core.data_loader import save_user_course
 from app.core.recommender import recommend
 
 
@@ -48,15 +46,6 @@ def render_semantic_view() -> None:
             top_n_highlight = highlight_count_slider()
         selected_ids = course_search(st.session_state.courses)
         st.session_state.selected_courses = selected_ids
-
-        new_course = add_course_form(st.session_state.courses)
-        if new_course:
-            try:
-                save_user_course(new_course)
-                st.session_state.initialized = False
-                st.rerun()
-            except ValueError as e:
-                st.error(str(e))
 
         recs = []
         all_candidate_scores = {}
