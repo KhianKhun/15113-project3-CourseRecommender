@@ -18,6 +18,16 @@ DEFAULT_ANCHOR_COUNT = 10
 # PCA configuration
 DEFAULT_N_COMPONENTS = 2
 
-# Scoring weights for node ranking
-SIMILARITY_WEIGHT = 0.85       # α in the scoring formula
-PAGERANK_WEIGHT = 0.15         # (1 - α)
+# Recommendation scoring weights used by recommender.py (three-signal formula, must sum to 1.0)
+# score = COSINE_WEIGHT * cosine_sim + STRUCTURAL_WEIGHT * structural_sim + PAGERANK_WEIGHT * pagerank
+COSINE_WEIGHT     = 0.55
+STRUCTURAL_WEIGHT = 0.30
+PAGERANK_WEIGHT   = 0.15
+
+# Prerequisite depth decay parameters
+DECAY_ALPHA = 0.30   # floor weight for distant nodes
+DECAY_K     = 0.15   # slope of linear decay per hop
+
+# Structural similarity direction multipliers
+UPSTREAM_WEIGHT   = 1.0   # prerequisite direction (A is required before B)
+DOWNSTREAM_WEIGHT = 0.7   # downstream direction (B unlocks C)

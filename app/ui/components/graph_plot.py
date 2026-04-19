@@ -10,7 +10,6 @@ import plotly.graph_objects as go
 
 from app.core.graph.pagerank import get_top_n_by_pagerank
 from app.ui.components.tooltip import format_tooltip
-from app.core.config import SIMILARITY_WEIGHT, PAGERANK_WEIGHT
 
 # Department → color mapping. Unknown departments fall back to DEPT_DEFAULT.
 DEPT_COLORS: dict[str, str] = {
@@ -61,6 +60,7 @@ def render_graph_plot(
     explained_variance: float,
     highlight_ids: list[str] | None = None,
     similarity_matrix: np.ndarray | None = None,
+    recommend_scores: dict[str, float] | None = None,
 ) -> go.Figure:
     """
     Builds an interactive Plotly scatter plot for the semantic graph view.
@@ -91,6 +91,10 @@ def render_graph_plot(
         explained_variance: PCA variance ratio sum (used in caption only).
         highlight_ids: Recommended course ids (define the circle radius).
         similarity_matrix: (N, N) cosine similarity matrix for fill ordering.
+        recommend_scores: Dict mapping course_id -> recommend() score. When
+            provided, used for fill ordering and node sizing in Mode B instead
+            of the legacy two-signal formula. Falls back to PageRank for
+            courses not in the dict.
 
     Returns:
         A Plotly Figure object ready for st.plotly_chart().
@@ -142,16 +146,11 @@ def render_graph_plot(
             # All courses within the circle.
             in_circle = [cid for cid, d in dists.items() if d <= radius]
 
-            # Blended score: SIMILARITY_WEIGHT * mean_sim + PAGERANK_WEIGHT * pagerank.
-            def blended_score(cid: str) -> float:
-                if similarity_matrix is None:
-                    return -dists.get(cid, float("inf"))  # fallback: closer = better
-                cidx = id_to_idx.get(cid)
-                if cidx is None:
-                    return 0.0
-                mean_sim = float(np.mean(similarity_matrix[cidx, input_indices]))
-                pr = pagerank_scores.get(cid, 0.0)
-                return SIMILARITY_WEIGHT * mean_sim + PAGERANK_WEIGHT * pr
+            def node_score(cid: str) -> float:
+                """Recommend score if available, otherwise fall back to PageRank."""
+                if recommend_scores:
+                    return recommend_scores.get(cid, pagerank_scores.get(cid, 0.0))
+                return pagerank_scores.get(cid, 0.0)
 
             # Build display_set.
             display_set: list[str] = []
@@ -170,9 +169,9 @@ def render_graph_plot(
                     display_set.append(hid)
                     seen.add(hid)
 
-            # 3. Fill from in-circle courses by blended score until top_k.
+            # 3. Fill from in-circle courses by recommend score until top_k.
             fill_candidates = sorted(
-                [(cid, blended_score(cid)) for cid in in_circle if cid not in seen],
+                [(cid, node_score(cid)) for cid in in_circle if cid not in seen],
                 key=lambda x: x[1],
                 reverse=True,
             )
@@ -184,8 +183,7 @@ def render_graph_plot(
 
             top_k_ids = display_set
             high_relevance_ids = set(forced_highlights) - selected_set
-            # Blended scores for sizing (changes with user selection).
-            node_scores = {cid: blended_score(cid) for cid in top_k_ids}
+            node_scores = {cid: node_score(cid) for cid in top_k_ids}
 
         else:
             top_k_ids = get_top_n_by_pagerank(pagerank_scores, top_k)
