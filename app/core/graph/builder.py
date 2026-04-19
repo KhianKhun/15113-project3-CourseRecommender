@@ -43,18 +43,22 @@ def build_graph(
     for course in courses:
         G.add_node(course["id"], **course)
 
-    id_to_idx = {c["id"]: i for i, c in enumerate(courses)}
     n = len(courses)
+    course_ids = [c["id"] for c in courses]
 
-    # Add semantic edges
-    for i in range(n):
-        for j in range(i + 1, n):
-            sim = float(similarity_matrix[i, j])
-            if sim > similarity_threshold:
-                src_id = courses[i]["id"]
-                dst_id = courses[j]["id"]
-                G.add_edge(src_id, dst_id, weight=sim, type="semantic")
-                G.add_edge(dst_id, src_id, weight=sim, type="semantic")
+    # Add semantic edges via numpy: find all (i,j) pairs above threshold in one pass
+    i_arr, j_arr = np.where(np.triu(similarity_matrix > similarity_threshold, k=1))
+    sim_vals = similarity_matrix[i_arr, j_arr]
+    forward = [
+        (course_ids[i], course_ids[j], {"weight": float(w), "type": "semantic"})
+        for i, j, w in zip(i_arr, j_arr, sim_vals)
+    ]
+    backward = [
+        (course_ids[j], course_ids[i], {"weight": float(w), "type": "semantic"})
+        for i, j, w in zip(i_arr, j_arr, sim_vals)
+    ]
+    G.add_edges_from(forward)
+    G.add_edges_from(backward)
 
     # Add prerequisite edges
     for course in courses:

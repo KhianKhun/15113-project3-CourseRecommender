@@ -60,6 +60,7 @@ def render_graph_plot(
     explained_variance: float,
     highlight_ids: list[str] | None = None,
     recommend_scores: dict[str, float] | None = None,
+    score_breakdowns: dict[str, tuple[float, float, float]] | None = None,
 ) -> go.Figure:
     """
     Builds an interactive Plotly scatter plot for the semantic graph view.
@@ -243,7 +244,8 @@ def render_graph_plot(
         else:
             labels.append("")
 
-        tooltips.append(format_tooltip(course, display_score))
+        breakdown = score_breakdowns.get(cid) if score_breakdowns else None
+        tooltips.append(format_tooltip(course, display_score, breakdown))
 
     fig = go.Figure()
 

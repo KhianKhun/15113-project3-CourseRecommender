@@ -165,12 +165,18 @@ def recommend(
     for idx in input_indices:
         final_scores[idx] = -1.0
 
-    # All non-input scores for graph display
-    all_scores = {
-        c["id"]: float(final_scores[i])
-        for i, c in enumerate(courses)
-        if c["id"] not in input_set
-    }
+    # All non-input scores and breakdowns for graph display
+    all_scores: dict[str, float] = {}
+    all_breakdowns: dict[str, tuple[float, float, float]] = {}
+    for i, c in enumerate(courses):
+        if c["id"] in input_set:
+            continue
+        all_scores[c["id"]] = float(final_scores[i])
+        all_breakdowns[c["id"]] = (
+            float(cosine_scores[i]),
+            float(structural_scores[i]),
+            float(pagerank_arr[i]),
+        )
 
     # Top-N results
     top_indices = np.argsort(final_scores)[::-1][:top_n]
@@ -183,4 +189,4 @@ def recommend(
         course["score"] = float(final_scores[idx])
         results.append(course)
 
-    return results, all_scores
+    return results, all_scores, all_breakdowns

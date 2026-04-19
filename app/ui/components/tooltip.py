@@ -6,31 +6,35 @@ Formats hover tooltip text for graph nodes and renders course cards.
 import streamlit as st
 
 
-def format_tooltip(course: dict, pagerank_score: float) -> str:
+def format_tooltip(
+    course: dict,
+    score: float,
+    breakdown: tuple[float, float, float] | None = None,
+) -> str:
     """
     Returns a formatted string for Plotly hovertemplate.
 
-    Format:
-        10-301 — Introduction to Machine Learning
-        Department: ML  |  Units: 12
-        Importance: 0.842
-        Prerequisites: 21-241, 36-218
-
-        This course provides a broad introduction to...
-        (description truncated to 200 characters)
+    When breakdown (cosine, structural, pagerank) is provided, displays the
+    score as "total (C:x + S:y + PR:z)" for inspection.
 
     Args:
         course: A full course dict from the merged course list.
-        pagerank_score: The normalized PageRank score for this course.
+        score: Blended recommend score, or PageRank when no selection active.
+        breakdown: Optional (cosine, structural, pagerank) raw signal values.
 
     Returns:
         A formatted string suitable for use in a Plotly hovertemplate.
     """
     prereqs = ", ".join(course["prerequisites"]) if course.get("prerequisites") else "None"
+    if breakdown is not None:
+        c, s, pr = breakdown
+        score_line = f"Score: {score:.4f}  (C:{c:.4f} + S:{s:.4f} + PR:{pr:.4f})"
+    else:
+        score_line = f"Score: {score:.4f}"
     return (
         f"{course['id']} \u2014 {course['name']}<br>"
         f"Department: {course['department']}  |  Units: {course['units']}<br>"
-        f"Importance: {pagerank_score:.3f}<br>"
+        f"{score_line}<br>"
         f"Prerequisites: {prereqs}"
     )
 

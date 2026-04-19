@@ -60,8 +60,9 @@ def render_semantic_view() -> None:
 
         recs = []
         all_candidate_scores = {}
+        all_score_breakdowns = {}
         if st.session_state.get("selected_courses"):
-            recs, all_candidate_scores = recommend(
+            recs, all_candidate_scores, all_score_breakdowns = recommend(
                 input_course_ids=st.session_state.selected_courses,
                 courses=st.session_state.courses,
                 embeddings=st.session_state.embeddings,
@@ -91,6 +92,7 @@ def render_semantic_view() -> None:
             explained_variance=explained_variance,
             highlight_ids=[r["id"] for r in recs] if recs else None,
             recommend_scores=all_candidate_scores if all_candidate_scores else None,
+            score_breakdowns=all_score_breakdowns if all_score_breakdowns else None,
         )
         st.plotly_chart(fig, use_container_width=True)
         if selected_ids:
