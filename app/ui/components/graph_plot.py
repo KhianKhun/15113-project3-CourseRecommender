@@ -59,7 +59,6 @@ def render_graph_plot(
     selected_ids: list[str],
     explained_variance: float,
     highlight_ids: list[str] | None = None,
-    similarity_matrix: np.ndarray | None = None,
     recommend_scores: dict[str, float] | None = None,
 ) -> go.Figure:
     """
@@ -73,7 +72,7 @@ def render_graph_plot(
              top_n_highlight highlighted/recommended courses.
           3. Display: selected (always) + top_n_highlight highlights (always)
              + fill remaining slots from courses inside the circle,
-             ranked by avg cosine similarity to selected courses, until top_k.
+             ranked by recommend score, until top_k.
 
     Node coloring priority (highest first):
       1. Selected (yellow #FFD700).
@@ -90,11 +89,9 @@ def render_graph_plot(
         selected_ids: Course ids highlighted yellow.
         explained_variance: PCA variance ratio sum (used in caption only).
         highlight_ids: Recommended course ids (define the circle radius).
-        similarity_matrix: (N, N) cosine similarity matrix for fill ordering.
         recommend_scores: Dict mapping course_id -> recommend() score. When
-            provided, used for fill ordering and node sizing in Mode B instead
-            of the legacy two-signal formula. Falls back to PageRank for
-            courses not in the dict.
+            provided, used for fill ordering and node sizing in Mode B.
+            Falls back to PageRank for courses not in the dict.
 
     Returns:
         A Plotly Figure object ready for st.plotly_chart().
@@ -147,9 +144,9 @@ def render_graph_plot(
             in_circle = [cid for cid, d in dists.items() if d <= radius]
 
             def node_score(cid: str) -> float:
-                """Recommend score if available, otherwise fall back to PageRank."""
+                """Blended recommend score if available, otherwise 0."""
                 if recommend_scores:
-                    return recommend_scores.get(cid, pagerank_scores.get(cid, 0.0))
+                    return recommend_scores.get(cid, 0.0)
                 return pagerank_scores.get(cid, 0.0)
 
             # Build display_set.
@@ -214,7 +211,7 @@ def render_graph_plot(
             continue
         idx = id_to_idx[cid]
         course = id_to_course[cid]
-        pr = pagerank_scores.get(cid, 0.0)
+        display_score = node_scores.get(cid, 0.0)
 
         # Coordinates
         xs.append(float(coords[idx, 0]))
@@ -246,7 +243,7 @@ def render_graph_plot(
         else:
             labels.append("")
 
-        tooltips.append(format_tooltip(course, pr))
+        tooltips.append(format_tooltip(course, display_score))
 
     fig = go.Figure()
 

@@ -7,7 +7,6 @@ venv/
 .streamlit/
 .DS_Store
 data/embeddings.npy
-data/structural_matrix.npy
 # Hugging Face model cache
 .cache/
 ~/.cache/huggingface/
