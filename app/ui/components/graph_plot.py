@@ -61,6 +61,7 @@ def render_graph_plot(
     highlight_ids: list[str] | None = None,
     recommend_scores: dict[str, float] | None = None,
     score_breakdowns: dict[str, tuple[float, float, float]] | None = None,
+    hidden_ids: list[str] | None = None,
 ) -> go.Figure:
     """
     Builds an interactive Plotly scatter plot for the semantic graph view.
@@ -98,6 +99,7 @@ def render_graph_plot(
         A Plotly Figure object ready for st.plotly_chart().
     """
     selected_set = set(selected_ids)
+    hidden_set = set(hidden_ids or [])
     id_to_idx = {c["id"]: i for i, c in enumerate(courses)}
     center = None  # set in Mode B when input_indices exist
 
@@ -207,7 +209,9 @@ def render_graph_plot(
     sizes, colors, labels, tooltips = [], [], [], []
     id_to_course = {c["id"]: c for c in courses}
 
-    for cid in top_k_ids:
+    visible_top_k_ids = [cid for cid in top_k_ids if cid not in hidden_set]
+
+    for cid in visible_top_k_ids:
         if cid not in id_to_idx:
             continue
         idx = id_to_idx[cid]
@@ -250,7 +254,7 @@ def render_graph_plot(
     fig = go.Figure()
 
     # Edges (semantic only, both endpoints must be in top_k)
-    top_k_set = set(top_k_ids)
+    top_k_set = set(visible_top_k_ids)
     # We reconstruct approximate semantic connectivity via coords proximity;
     # without the graph object, we skip explicit edge rendering here.
     # (The graph is not passed into this function per SPEC4 interface contract.)

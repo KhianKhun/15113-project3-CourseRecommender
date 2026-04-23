@@ -108,3 +108,52 @@ def course_search(courses: list[dict]) -> list[str]:
         key="course_search_multiselect",
     )
     return [all_label_to_id[s] for s in selected if s in all_label_to_id]
+
+
+def hidden_course_search(courses: list[dict]) -> list[str]:
+    """
+    Renders a text search input and a multiselect for hidden courses.
+    Interaction matches course_search(), but stores values under separate keys.
+
+    Args:
+        courses: The full course list from data_loader.load_courses().
+
+    Returns:
+        A list of hidden course id strings.
+    """
+    all_label_to_id = {f"{c['id']} — {c['name']}": c["id"] for c in courses}
+    query = st.text_input("Search courses to hide", key="hidden_course_query")
+
+    if query:
+        filtered_labels = [
+            label for label in all_label_to_id
+            if query.lower() in label.lower()
+        ]
+    else:
+        filtered_labels = list(all_label_to_id.keys())
+
+    preserved = st.session_state.get("hidden_course_multiselect", [])
+    preserved_set = set(filtered_labels)
+    for label in preserved:
+        if label not in preserved_set:
+            filtered_labels.insert(0, label)
+
+    st.markdown(
+        """
+        <style>
+        [data-testid="stMultiSelect"] [data-baseweb="select"] > div:first-child {
+            max-height: 80px;
+            overflow-y: auto;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    selected = st.multiselect(
+        "Hidden courses",
+        options=filtered_labels,
+        label_visibility="collapsed",
+        key="hidden_course_multiselect",
+    )
+    return [all_label_to_id[s] for s in selected if s in all_label_to_id]

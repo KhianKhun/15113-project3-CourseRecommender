@@ -29,6 +29,7 @@ from app.core.graph.builder import build_graph
 from app.core.graph.pagerank import compute_pagerank
 from app.core.reduction.pca import reduce_dimensions
 from app.ui.semantic_view import render_semantic_view
+from app.ui.hidden_view import render_hidden_course_view
 from app.ui.prereq_view import render_prereq_view
 
 
@@ -56,12 +57,19 @@ if "initialized" not in st.session_state:
         st.session_state.coords_3d = coords_3d
         st.session_state.var_2d = var_2d
         st.session_state.var_3d = var_3d
+        st.session_state.hidden_course_ids = []
         st.session_state.initialized = True
 
-tab1, tab2 = st.tabs(["Semantic Graph", "Prerequisite Path"])
+if "hidden_course_ids" not in st.session_state:
+    st.session_state.hidden_course_ids = []
+
+tab1, tab2, tab3 = st.tabs(["Semantic Graph", "Hidden Course", "Prerequisite Path"])
 
 with tab1:
     render_semantic_view()
 
 with tab2:
+    render_hidden_course_view()
+
+with tab3:
     render_prereq_view()

@@ -39,6 +39,9 @@ def render_semantic_view() -> None:
     """
     left_col, right_col = st.columns([1, 3])
 
+    hidden_ids = st.session_state.get("hidden_course_ids", [])
+    hidden_set = set(hidden_ids)
+
     with left_col:
         with st.expander("Display settings", expanded=False):
             n_components = dimension_selector()
@@ -58,6 +61,7 @@ def render_semantic_view() -> None:
                 pagerank_scores=st.session_state.pagerank_scores,
                 top_n=top_n_highlight,
             )
+            recs = [course for course in recs if course["id"] not in hidden_set]
             st.markdown("---")
             st.subheader("Recommended for you")
             render_recommendation_list(recs)
@@ -82,6 +86,7 @@ def render_semantic_view() -> None:
             highlight_ids=[r["id"] for r in recs] if recs else None,
             recommend_scores=all_candidate_scores if all_candidate_scores else None,
             score_breakdowns=all_score_breakdowns if all_score_breakdowns else None,
+            hidden_ids=hidden_ids,
         )
         st.plotly_chart(fig, use_container_width=True)
         if selected_ids:
