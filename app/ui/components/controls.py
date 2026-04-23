@@ -142,7 +142,7 @@ def hidden_course_search(courses: list[dict]) -> list[str]:
         """
         <style>
         [data-testid="stMultiSelect"] [data-baseweb="select"] > div:first-child {
-            max-height: 80px;
+            max-height: 240px;
             overflow-y: auto;
         }
         </style>

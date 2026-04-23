@@ -65,11 +65,11 @@ if "hidden_course_ids" not in st.session_state:
 
 tab1, tab2, tab3 = st.tabs(["Semantic Graph", "Hidden Course", "Prerequisite Path"])
 
-with tab1:
-    render_semantic_view()
-
 with tab2:
     render_hidden_course_view()
+
+with tab1:
+    render_semantic_view()
 
 with tab3:
     render_prereq_view()
