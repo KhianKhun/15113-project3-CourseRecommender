@@ -73,12 +73,12 @@ pip install -r requirements.txt
 ```bash
 cd 15113-project3-CourseRecommender
 pip install -r requirements.txt
-streamlit run app/app.py
+py -m streamlit run app/app.py
 ```
 
 ### 3. Start the App
 ```bash
-streamlit run app/app.py
+py -m streamlit run app/app.py
 ```
 
 On first run, embedding/model setup may take some time. Later runs are faster due to caching.
