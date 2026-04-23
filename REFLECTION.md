@@ -1,74 +1,11 @@
-# REFLECTION.md
-# CMU Course Graph — Design Reflections
+REFLECTION.md
 
-This file records design decisions, trade-offs, and lessons learned throughout
-the project. It is updated incrementally as each segment is implemented.
+Question 1: Actually, this project is a demo version of my one idea. After I finished HW9, my friend complained that the it is difficult to decide the practicality for one course, there are many avaible options, so I decide to design such project in summer. I firstly metioned my small ideas to AI, such that "I want to scrape data about CMU course description and Knowledge requirment in Linkdin, and then use technology like LLP or ML model to analyze there similaity to get a recommandation list". Initially, I had no idea about how to do that, so I spent most free time in one week to talk with AI and declare each model to achieve the final function (application). In talking process, I confirmed the project structure, high-level implement details, and relative technology. Based on these knowledge, I picked the first two model, data scraping and similarity analysis about course description.
 
----
+Question 2: I use a combination stragteies. The main workflow is: talking with Browser Chat (Claude) -> brain storm and confirm prompt -> give SPEC to agent (Claude code) -> run tests program -> human interaction and give feedback. 
 
-## Data Pipeline (Segment 1)
+Question 3: In task declaration, I know this whole project is very long and large-scale, so my strategy is to separate to small task to increase the robustness and save the context usage in each agent window. The talking with AI is the process to clear my requirment and decribe my desired project. I do not choose to use REVIEW.md, instead, I use python file with code to check, since large-scale prjects will spend more context tokens to analyze (the complexity is O(N^2) of transformer skeleton). Also, I have a lot of uncertain things and unexpected cases, so I use human interaction to debug. In impletation process, the fact follows what I thought, one agent will run out tokens after reading two SPEC and algorithm output is not what I expected (eg. 15251 has a low similarity with 21228), I have to talk with AI and add extra patch SPEC (like SPEC_3.1). However, as the optimization of project, my project development direction starts to be further and further away with the content in SPEC files. Hence I start to talk agent like the way of browser talk at the tail of project development.
 
-**scraper.py:** The CMU course catalog API endpoint is a placeholder. In a real
-deployment this would be replaced with the actual catalog URL or a local HTML
-scraper using BeautifulSoup. The polite crawl delay (0.3s) prevents rate limiting.
+Question 4: Yes, I learned about AI agent and a new agent workflow. Based on my experience and knowledge, I understand the detailed prompts including algorithm, ui color, ui position are necessary for AI to create a target code. In the case of coding with AI, human is like a leader that can ignore code information.
 
-**parser.py:** Handles two common raw field naming conventions (`course_id`/`id`,
-`title`/`name`, `desc`/`description`) to be robust against slight API changes.
-
-**validator.py:** Validates at parse time rather than at load time to catch data
-quality issues early in the pipeline, before embeddings are computed.
-
----
-
-## Core Layer (Segment 2)
-
-**data_loader.py:** The fixed ordering (official sorted by id, then user sorted by id)
-is critical — `embeddings.npy` row indices must correspond exactly to this order.
-Any change to this ordering would invalidate cached embeddings.
-
-**embedder/model.py:** Uses the row-count match heuristic to decide whether to reuse
-cached embeddings. This is sufficient for the expected usage pattern (adding user
-courses one at a time), but a hash-based check would be more robust in production.
-
-**graph/builder.py:** Semantic edges are added bidirectionally, making the graph
-undirected with respect to semantic similarity. Prerequisite edges are directional
-(prereq → course), reflecting the dependency direction.
-
-**graph/pagerank.py:** PageRank is normalized by dividing by the max score rather
-than by the sum. This preserves the relative ranking while keeping the scale in
-[0, 1], making the metric directly comparable to the similarity threshold.
-
-**reduction/pca.py:** PCA is seeded (`random_state=42`) for reproducibility. The
-explained variance ratio sum is surfaced to the user so they can judge whether
-2D or 3D is capturing enough structure.
-
----
-
-## Recommender & Prereq (Segment 3)
-
-**recommender.py:** Uses PageRank as the final ranking signal after semantic
-neighbor collection. This is a deliberate trade-off: semantic similarity finds
-related courses, but PageRank promotes courses that are prerequisites for many
-other courses — i.e., foundational courses the user is likely to benefit from.
-
-**prereq.py:** Uses reverse BFS from the target node to collect all ancestors.
-The returned subgraph includes only `type="prereq"` edges, stripping semantic
-edges that are not relevant to the prerequisite view.
-
----
-
-## UI Layer (Segment 4)
-
-**app.py:** `@st.cache_resource` is used for the full data pipeline. This means
-the pipeline only runs once per server lifetime, not once per user session.
-For a multi-user deployment, this is the correct choice.
-
-**semantic_view.py:** PCA is recomputed on every render within the session because
-the number of components can change (2D vs 3D toggle). If performance is a concern,
-both 2D and 3D projections could be precomputed.
-
-**prereq_view.py:** Falls back to `nx.spring_layout` if the prerequisite subgraph
-contains a cycle (which can happen if `courses.json` has circular dependencies).
-This is a defensive choice; ideally the data pipeline would catch circular prereqs.
-
----
+Question 5: If I have more time, I will complete the whole idea which I metioned in Quesiton 1, adding function of Linkdin date scarping, mobile phone interaction, better recommand algorithm, and somewhat unexpected cases or codes.
