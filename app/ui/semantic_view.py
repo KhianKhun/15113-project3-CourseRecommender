@@ -51,17 +51,26 @@ def render_semantic_view() -> None:
         st.session_state.selected_courses = selected_ids
 
         recs = []
+        graph_highlight_ids: list[str] = []
         all_candidate_scores = {}
         all_score_breakdowns = {}
         if st.session_state.get("selected_courses"):
+            # Pull a larger recommendation pool, then hide-filter and backfill so
+            # hidden courses do not occupy visible recommendation/highlight slots.
+            pool_n = min(
+                len(st.session_state.courses),
+                max(top_k + len(hidden_set) + top_n_highlight, top_n_highlight),
+            )
             recs, all_candidate_scores, all_score_breakdowns = recommend(
                 input_course_ids=st.session_state.selected_courses,
                 courses=st.session_state.courses,
                 embeddings=st.session_state.embeddings,
                 pagerank_scores=st.session_state.pagerank_scores,
-                top_n=top_n_highlight,
+                top_n=pool_n,
             )
-            recs = [course for course in recs if course["id"] not in hidden_set]
+            visible_recs = [course for course in recs if course["id"] not in hidden_set]
+            graph_highlight_ids = [course["id"] for course in visible_recs[:top_n_highlight]]
+            recs = visible_recs[:top_n_highlight]
             st.markdown("---")
             st.subheader("Recommended for you")
             render_recommendation_list(recs)
@@ -83,7 +92,7 @@ def render_semantic_view() -> None:
             top_n_highlight=top_n_highlight,
             selected_ids=selected_ids,
             explained_variance=explained_variance,
-            highlight_ids=[r["id"] for r in recs] if recs else None,
+            highlight_ids=graph_highlight_ids if graph_highlight_ids else None,
             recommend_scores=all_candidate_scores if all_candidate_scores else None,
             score_breakdowns=all_score_breakdowns if all_score_breakdowns else None,
             hidden_ids=hidden_ids,

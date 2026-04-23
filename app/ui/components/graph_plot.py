@@ -103,6 +103,13 @@ def render_graph_plot(
     id_to_idx = {c["id"]: i for i, c in enumerate(courses)}
     center = None  # set in Mode B when input_indices exist
 
+    def top_n_visible_by_pagerank(n: int) -> list[str]:
+        """Return top-n pagerank course ids, skipping hidden courses."""
+        if n <= 0:
+            return []
+        ranked = get_top_n_by_pagerank(pagerank_scores, len(courses))
+        return [cid for cid in ranked if cid not in hidden_set][:n]
+
     if selected_ids:
         # Mode B:
         # 1. Center = geometric center of selected courses.
@@ -159,19 +166,27 @@ def render_graph_plot(
 
             # 1. Selected courses (always, yellow).
             for sid in selected_ids:
+                if sid in hidden_set:
+                    continue
                 if sid in all_course_ids and sid not in seen:
                     display_set.append(sid)
                     seen.add(sid)
 
             # 2. Forced highlights (always, coral red).
             for hid in forced_highlights:
+                if hid in hidden_set:
+                    continue
                 if hid not in seen:
                     display_set.append(hid)
                     seen.add(hid)
 
             # 3. Fill from in-circle courses by recommend score until top_k.
             fill_candidates = sorted(
-                [(cid, node_score(cid)) for cid in in_circle if cid not in seen],
+                [
+                    (cid, node_score(cid))
+                    for cid in in_circle
+                    if cid not in seen and cid not in hidden_set
+                ],
                 key=lambda x: x[1],
                 reverse=True,
             )
@@ -182,20 +197,20 @@ def render_graph_plot(
                 seen.add(cid)
 
             top_k_ids = display_set
-            high_relevance_ids = set(forced_highlights) - selected_set
+            high_relevance_ids = set(forced_highlights) - selected_set - hidden_set
             node_scores = {cid: node_score(cid) for cid in top_k_ids}
 
         else:
-            top_k_ids = get_top_n_by_pagerank(pagerank_scores, top_k)
+            top_k_ids = top_n_visible_by_pagerank(top_k)
             high_relevance_ids = (
-                set(highlight_ids) - selected_set if highlight_ids
-                else set(get_top_n_by_pagerank(pagerank_scores, top_n_highlight))
+                (set(highlight_ids) - selected_set - hidden_set) if highlight_ids
+                else set(top_n_visible_by_pagerank(top_n_highlight))
             )
             node_scores = {cid: pagerank_scores.get(cid, 0.0) for cid in top_k_ids}
     else:
         # Mode A: pure PageRank ordering
-        top_k_ids = get_top_n_by_pagerank(pagerank_scores, top_k)
-        high_relevance_ids = set(get_top_n_by_pagerank(pagerank_scores, top_n_highlight))
+        top_k_ids = top_n_visible_by_pagerank(top_k)
+        high_relevance_ids = set(top_n_visible_by_pagerank(top_n_highlight))
         node_scores = {cid: pagerank_scores.get(cid, 0.0) for cid in top_k_ids}
 
     # Normalize node_scores to [0, 1] for sizing.

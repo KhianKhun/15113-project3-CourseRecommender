@@ -8,4 +8,4 @@ Question 3: In task declaration, I know this whole project is very long and larg
 
 Question 4: Yes, I learned about AI agent and a new agent workflow. Based on my experience and knowledge, I understand the detailed prompts including algorithm, ui color, ui position are necessary for AI to create a target code. In the case of coding with AI, human is like a leader that can ignore code information.
 
-Question 5: If I have more time, I will complete the whole idea which I metioned in Quesiton 1, adding function of Linkdin date scarping, mobile phone interaction, better recommand algorithm, and somewhat unexpected cases or codes.
+Question 5: If I have more time, I will complete the whole idea which I metioned in Quesiton 1, adding function of Linkdin date scarping, mobile phone interaction, better recommand algorithm, and somewhat unexpected cases or codes. If possible, I will move it to mobile phone and optimize the plot.
