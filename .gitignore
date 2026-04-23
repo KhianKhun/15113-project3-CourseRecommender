@@ -7,6 +7,9 @@ venv/
 .streamlit/
 .DS_Store
 data/embeddings.npy
+data/graph_edge_matrix.npy
+data/pagerank_scores.npy
+data/prereq_scores.npy
 # Hugging Face model cache
 .cache/
 ~/.cache/huggingface/

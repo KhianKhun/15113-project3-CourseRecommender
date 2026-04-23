@@ -6,6 +6,9 @@ DATA_DIR = ROOT_DIR / "data"
 COURSES_PATH      = DATA_DIR / "courses.json"
 USER_COURSES_PATH = DATA_DIR / "user_courses.json"
 EMBEDDINGS_PATH   = DATA_DIR / "embeddings.npy"
+GRAPH_EDGE_MATRIX_PATH = DATA_DIR / "graph_edge_matrix.npy"
+PAGERANK_MATRIX_PATH = DATA_DIR / "pagerank_scores.npy"
+PREREQ_SCORE_MATRIX_PATH = DATA_DIR / "prereq_scores.npy"
 
 # Model configuration
 EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"

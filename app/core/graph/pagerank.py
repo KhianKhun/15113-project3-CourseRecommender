@@ -4,8 +4,9 @@ Computes and normalizes PageRank scores for all course nodes.
 """
 
 import networkx as nx
+import numpy as np
 
-from app.core.config import PAGERANK_ALPHA
+from app.core.config import PAGERANK_ALPHA, PAGERANK_MATRIX_PATH
 
 
 def compute_pagerank(graph: nx.DiGraph, alpha: float = PAGERANK_ALPHA) -> dict[str, float]:
@@ -24,13 +25,40 @@ def compute_pagerank(graph: nx.DiGraph, alpha: float = PAGERANK_ALPHA) -> dict[s
     Returns:
         A dict mapping course id strings to float scores in [0, 1].
     """
-    raw_scores = nx.pagerank(graph, alpha=alpha, weight="weight")
+    node_ids = sorted(graph.nodes())
+    n = len(node_ids)
+    can_use_cache = alpha == PAGERANK_ALPHA
 
+    if can_use_cache and PAGERANK_MATRIX_PATH.exists():
+        try:
+            cached = np.load(PAGERANK_MATRIX_PATH)
+            if cached.shape == (n, 1):
+                return {
+                    node_id: float(cached[i, 0])
+                    for i, node_id in enumerate(node_ids)
+                }
+        except OSError:
+            pass
+
+    raw_scores = nx.pagerank(graph, alpha=alpha, weight="weight")
     max_score = max(raw_scores.values()) if raw_scores else 1.0
     if max_score == 0.0:
         max_score = 1.0
 
-    return {node: score / max_score for node, score in raw_scores.items()}
+    normalized = {node: score / max_score for node, score in raw_scores.items()}
+
+    if can_use_cache:
+        try:
+            score_matrix = np.array(
+                [[float(normalized.get(node_id, 0.0))] for node_id in node_ids],
+                dtype=np.float32,
+            )
+            PAGERANK_MATRIX_PATH.parent.mkdir(parents=True, exist_ok=True)
+            np.save(PAGERANK_MATRIX_PATH, score_matrix)
+        except OSError:
+            pass
+
+    return normalized
 
 
 def get_top_n_by_pagerank(pagerank_scores: dict[str, float], n: int) -> list[str]:

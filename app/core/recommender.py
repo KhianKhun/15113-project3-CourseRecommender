@@ -15,6 +15,7 @@ from app.core.config import (
     DECAY_ALPHA, DECAY_K,
     UPSTREAM_WEIGHT, DOWNSTREAM_WEIGHT,
 )
+from app.core.graph.prereq import get_prereq_score_matrix
 
 logger = logging.getLogger(__name__)
 
@@ -67,13 +68,27 @@ def _weighted_jaccard(n_a: dict[str, float], n_b: dict[str, float]) -> float:
     return numerator / denominator if denominator > 0.0 else 0.0
 
 
+def _structural_sim_pair(
+    id_a: str,
+    id_b: str,
+    courses_by_id: dict,
+    reverse_index: dict,
+) -> float:
+    """
+    Pairwise structural similarity helper retained for test compatibility.
+    """
+    n_a = _weighted_neighborhood(id_a, courses_by_id, reverse_index)
+    n_b = _weighted_neighborhood(id_b, courses_by_id, reverse_index)
+    return _weighted_jaccard(n_a, n_b)
+
+
 def recommend(
     input_course_ids: list[str],
     courses: list[dict],
     embeddings: np.ndarray,
     pagerank_scores: dict[str, float],
     top_n: int = 5,
-) -> tuple[list[dict], dict[str, float]]:
+) -> tuple[list[dict], dict[str, float], dict[str, tuple[float, float, float]]]:
     """
     Scores all courses using three signals and returns the top-N recommendations.
 
@@ -81,8 +96,7 @@ def recommend(
         score = COSINE_WEIGHT * cosine_sim + STRUCTURAL_WEIGHT * structural_sim + PAGERANK_WEIGHT * pagerank_score
 
     cosine_sim: mean cosine similarity to all input courses (numpy batch computation).
-    structural_sim: mean weighted-Jaccard of prerequisite neighborhoods against
-        each input course, computed on-demand via BFS for all 4000 courses.
+    structural_sim: mean prerequisite score from cached NxN prereq matrix.
     pagerank_score: normalized PageRank from the pre-built graph.
 
     Args:
@@ -96,9 +110,10 @@ def recommend(
         A tuple of:
         - list of up to top_n course dicts, each augmented with a 'score' field
         - dict mapping every non-input course_id -> blended score (for graph display)
+        - dict mapping every non-input course_id -> (cosine, structural, pagerank)
     """
     if not input_course_ids:
-        return [], {}
+        return [], {}, {}
 
     id_to_idx = {c["id"]: i for i, c in enumerate(courses)}
     id_to_course = {c["id"]: c for c in courses}
@@ -112,7 +127,7 @@ def recommend(
         input_indices.append(id_to_idx[cid])
 
     if not input_indices:
-        return [], {}
+        return [], {}, {}
 
     n = len(courses)
     input_idx_arr = np.array(input_indices)
@@ -134,31 +149,15 @@ def recommend(
         [pagerank_scores.get(c["id"], 0.0) for c in courses], dtype=np.float32
     )
 
-    # --- Structural signal (BFS on-demand) ---
-    courses_by_id = {c["id"]: c for c in courses}
-    reverse_index: dict[str, list[str]] = {}
-    for c in courses:
-        for p in c["prerequisites"]:
-            reverse_index.setdefault(p, []).append(c["id"])
-
-    input_neighborhoods = [
-        _weighted_neighborhood(courses[idx]["id"], courses_by_id, reverse_index)
-        for idx in input_indices
-    ]
-
-    structural_scores = np.zeros(n, dtype=np.float32)
-    for i, c in enumerate(courses):
-        if c["id"] in input_set:
-            continue
-        if (
-            cosine_scores[i] <= STRUCTURAL_COSINE_THRESHOLD
-            or pagerank_arr[i] <= STRUCTURAL_PAGERANK_THRESHOLD
-        ):
-            continue
-        nbr = _weighted_neighborhood(c["id"], courses_by_id, reverse_index)
-        if nbr:
-            vals = [_weighted_jaccard(nbr, inp_nbr) for inp_nbr in input_neighborhoods]
-            structural_scores[i] = float(np.mean(vals))
+    # --- Structural signal (cached prerequisite score matrix) ---
+    prereq_scores = get_prereq_score_matrix(courses)
+    structural_scores = prereq_scores[:, input_idx_arr].mean(axis=1).astype(np.float32)
+    structural_scores = np.where(
+        (cosine_scores > STRUCTURAL_COSINE_THRESHOLD)
+        & (pagerank_arr > STRUCTURAL_PAGERANK_THRESHOLD),
+        structural_scores,
+        0.0,
+    ).astype(np.float32)
 
     # --- Final score: weighted sum (no min-max normalization) ---
     final_scores = (
